@@ -408,7 +408,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
     if (courtLine.isNotEmpty) _values['I'] = courtLine;
     final designation = RegExp(
-      r'\b(LEGAL\s+ADVISOR|NODAL\s+OFFICER|DIRECTOR\s+RFSL|DIRECTOR\s+READER|HEAD\s+MASTER|HOME\s+GUARD|ADVOCATE|SHO|DSP|SP|SI|LSI|PSI|ASI|ESI|EHC|LHC|L\s*/\s*ASI|L\s*/\s*CT|RCT|HC|CT|MHC|SPO|MM|[A-Z][A-Z]{1,2})\b',
+      r'\b(LEGAL\s+ADVISOR|NODAL\s+OFFICER|DIRECTOR\s+RFSL|DIRECTOR\s+READER|HEAD\s+MASTER|HOME\s+GUARD|ADVOCATE|SHO|DSP|SP|SI|LSI|PSI|ASI|ESI|EHC|LHC|L\s*/\s*ASI|L\s*/\s*CT|RCT|HC|CT|MHC|SPO|MM|[A-Z]{2,}\s+\d{1,4})\b',
       caseSensitive: false,
     ).firstMatch(all);
     if (designation != null) _values['Q'] = designation.group(0)!.toUpperCase().replaceAll(RegExp(r'\s*/\s*'), '/');
@@ -500,7 +500,9 @@ class _RegisterPageState extends State<RegisterPage> {
       for (var r = 1; r < sheet.maxRows; r++) {
         final existingValue = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('C'), rowIndex: r)).value;
         String existingDate = existingValue?.toString().trim() ?? '';
-        if (existingValue is DateTime) existingDate = fmtDate(existingValue);
+        if (existingValue is DateTimeCellValue) {
+          existingDate = fmtDate(existingValue.value);
+        }
         final parsedExisting = DateTime.tryParse(existingDate);
         if (parsedExisting != null) existingDate = fmtDate(parsedExisting);
         if (existingDate == scanDate) dailyCount++;
@@ -523,7 +525,7 @@ class _RegisterPageState extends State<RegisterPage> {
       await file.writeAsBytes(bytes, flush: true);
       if (!mounted) return;
       setState(() { _busy = false; _status = 'Record appended to Sheet1. Share/save this updated workbook; open the exported file next time to continue from it.'; });
-      await Share.shareXFiles([XFile(file.path)], text: 'Court OCR Scanner Excel register');
+      await SharePlus.instance.share(ShareParams(text: 'Court OCR Scanner Excel register', files: [XFile(file.path)]));
     } catch (e) {
       if (!mounted) return;
       setState(() { _busy = false; _status = 'Excel export failed: $e'; });
