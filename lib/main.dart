@@ -66,7 +66,7 @@ const fieldSpecs = <FieldSpec>[
 ];
 
 const colLetters = <String>[
-  'A','B','C','D','E','F','G','H','I','J','K','P','Q','R','S','T','W','AE','AF','AM'
+  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'P', 'Q', 'R', 'S', 'T', 'W', 'AE', 'AF', 'AM'
 ];
 
 int colIndex(String letters) {
@@ -99,7 +99,7 @@ DateTime? parseStrictDate(String date) {
 String monthYear(String date) {
   final parsed = parseStrictDate(date);
   if (parsed == null) return '';
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return '${months[parsed.month - 1]}${parsed.year}';
 }
 
@@ -124,12 +124,10 @@ class _RegisterPageState extends State<RegisterPage> {
   final List<String> _defaultAssignees = [
     'SHO CITY', 'SHO BAHIN', 'EHC SUBHASH CHAND', 'SPO RAMESH 246',
     'CT RAVI 1497 PWL', 'EHC KARTAR 118', 'CT AJAY 99',
-    'CT NASEEM KHAN 473', 'EHC HASAN'
+    'CT NASEEM KHAN 473', 'EHC HASAN',
   ];
   List<String> _assignees = [];
   String _cloudVisionEndpoint = '';
-  String _jurisdiction = 'WITHIN DISTRICT';
-  String _personRole = 'ACCUSED';
   String _rawText = '';
   String? _workbookPath;
   Uint8List? _workbookBytes;
@@ -178,7 +176,7 @@ class _RegisterPageState extends State<RegisterPage> {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getStringList('assignees');
     if (!mounted) return;
-    setState(() => _assignees = saved == null ? List.of(_defaultAssignees) : saved);
+    setState(() => _assignees = saved ?? List.of(_defaultAssignees));
   }
 
   Future<void> _loadCloudVisionEndpoint() async {
@@ -334,10 +332,10 @@ class _RegisterPageState extends State<RegisterPage> {
       _applyOcr(recognizedText);
       if (!mounted) return;
       setState(() {
-        _busy = false;
+        _busy = false,
         _status = recognizedText.trim().isEmpty
             ? 'No text detected. Enter the details manually.'
-            : 'Google Cloud Vision OCR complete (English/Hindi). Review and correct every field before saving.';
+            : 'Google Cloud Vision OCR complete (English/Hindi). Review and correct every field before saving.',
       });
     } catch (e) {
       if (!mounted) return;
@@ -346,7 +344,6 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   void _applyOcr(String text) {
-    // Start a fresh OCR record so fields from a previous document do not leak into this one.
     for (final key in _values.keys.toList()) {
       _values[key] = '';
     }
@@ -396,8 +393,7 @@ class _RegisterPageState extends State<RegisterPage> {
       if (p.length != 3) return s;
       return '${p[0].padLeft(2, '0')}/${p[1].padLeft(2, '0')}/${p[2]}';
     }
-    // Prefer labelled dates: warrants commonly list PREVIOUS DATE, NEXT DATE,
-    // and the issue date separately. Do not accidentally use PREVIOUS DATE as Peshi.
+
     final nextDate = RegExp('NEXT\\s+DATE\\s*[:：-]?\\s*$datePattern', caseSensitive: false).firstMatch(all);
     if (nextDate != null) _values['J'] = normalizeDate(nextDate.group(1)!);
     final issueDate = RegExp(
@@ -431,7 +427,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
     if (nameLine.isNotEmpty) _values['R'] = nameLine;
 
-    // GH.xlsx column T is the mobile number field, not a present-address field.
     final mobileMatch = RegExp(r'\b[6-9]\d{9}\b').firstMatch(all);
     if (mobileMatch != null) _values['T'] = mobileMatch.group(0)!;
     final addressMatch = RegExp(
@@ -449,7 +444,6 @@ class _RegisterPageState extends State<RegisterPage> {
       _values['AE'] = 'POLICE';
     }
 
-    // Show likely missing/uncertain case identifiers for manual correction.
     if ((_values['E'] ?? '').isEmpty) _values['E'] = '*NOTE* CASE NO NOT FOUND';
     _syncControllers();
   }
@@ -509,7 +503,6 @@ class _RegisterPageState extends State<RegisterPage> {
       if ((_values['P'] ?? '').trim().isEmpty) _values['P'] = scanDate;
       _values['K'] = monthYear(_values['J'] ?? '');
 
-      // Serial number restarts each scan date; registration is counted per court.
       var dailyCount = 0;
       for (var r = 1; r < sheet.maxRows; r++) {
         final existingDateText = cellValueAsString(
@@ -538,7 +531,10 @@ class _RegisterPageState extends State<RegisterPage> {
       final file = File('${dir.path}/Court_OCR_Register_${DateTime.now().millisecondsSinceEpoch}.xlsx');
       await file.writeAsBytes(bytes, flush: true);
       if (!mounted) return;
-      setState(() { _busy = false; _status = 'Record appended to Sheet1. Share/save this updated workbook; open the exported file next time to continue from it.'; });
+      setState(() {
+        _busy = false;
+        _status = 'Record appended to Sheet1. Share/save this updated workbook; open the exported file next time to continue from it.';
+      });
       await SharePlus.instance.share(ShareParams(text: 'Court OCR Scanner Excel register', files: [XFile(file.path)]));
     } catch (e) {
       if (!mounted) return;
@@ -550,63 +546,77 @@ class _RegisterPageState extends State<RegisterPage> {
     final input = TextEditingController();
     await showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(builder: (ctx, refresh) => AlertDialog(
-        title: const Text('Manage W assignee options'),
-        content: SizedBox(
-          width: 500,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: input, decoration: const InputDecoration(labelText: 'Add officer/person')),
-            const SizedBox(height: 8),
-            FilledButton.tonal(
-              onPressed: () {
-                final value = input.text.trim();
-                if (value.isNotEmpty && !_assignees.contains(value)) {
-                  _assignees.add(value); input.clear(); refresh(() {});
-                }
-              },
-              child: const Text('Add option'),
-            ),
-            SizedBox(
-              height: 260, width: double.maxFinite,
-              child: ListView.builder(
-                itemCount: _assignees.length,
-                itemBuilder: (_, i) => ListTile(
-                  dense: true,
-                  title: Text(_assignees[i]),
-                  trailing: IconButton(
-                    tooltip: 'Remove',
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => refresh(() => _assignees.removeAt(i)),
-                  ),
-                  onTap: () async {
-                    final edit = TextEditingController(text: _assignees[i]);
-                    final changed = await showDialog<String>(
-                      context: ctx,
-                      builder: (dctx) => AlertDialog(
-                        title: const Text('Edit option'),
-                        content: TextField(controller: edit, autofocus: true),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('Cancel')),
-                          FilledButton(onPressed: () => Navigator.pop(dctx, edit.text.trim()), child: const Text('Save')),
-                        ],
-                      ),
-                    );
-                    if (changed != null && changed.isNotEmpty) refresh(() => _assignees[i] = changed);
-                  },
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, refresh) => AlertDialog(
+          title: const Text('Manage W assignee options'),
+          content: SizedBox(
+            width: 500,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: input,
+                  decoration: const InputDecoration(labelText: 'Add officer/person'),
                 ),
-              ),
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: () {
+                    final value = input.text.trim();
+                    if (value.isNotEmpty && !_assignees.contains(value)) {
+                      _assignees.add(value);
+                      input.clear();
+                      refresh(() {});
+                    }
+                  },
+                  child: const Text('Add option'),
+                ),
+                SizedBox(
+                  height: 260,
+                  width: double.maxFinite,
+                  child: ListView.builder(
+                    itemCount: _assignees.length,
+                    itemBuilder: (_, i) => ListTile(
+                      dense: true,
+                      title: Text(_assignees[i]),
+                      trailing: IconButton(
+                        tooltip: 'Remove',
+                        icon: const Icon(Icons.delete_outline),
+                        onPressed: () => refresh(() => _assignees.removeAt(i)),
+                      ),
+                      onTap: () async {
+                        final edit = TextEditingController(text: _assignees[i]);
+                        final changed = await showDialog<String>(
+                          context: ctx,
+                          builder: (dctx) => AlertDialog(
+                            title: const Text('Edit option'),
+                            content: TextField(controller: edit, autofocus: true),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(dctx), child: const Text('Cancel')),
+                              FilledButton(onPressed: () => Navigator.pop(dctx, edit.text.trim()), child: const Text('Save')),
+                            ],
+                          ),
+                        );
+                        if (changed != null && changed.isNotEmpty) refresh(() => _assignees[i] = changed);
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ]),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            FilledButton(
+              onPressed: () async {
+                await _saveAssignees();
+                if (mounted) setState(() {});
+                if (ctx.mounted) Navigator.pop(ctx);
+              },
+              child: const Text('Save settings'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(onPressed: () async {
-            await _saveAssignees();
-            if (mounted) setState(() {});
-            if (ctx.mounted) Navigator.pop(ctx);
-          }, child: const Text('Save settings')),
-        ],
-      )),
+      ),
     );
   }
 
@@ -651,7 +661,9 @@ class _RegisterPageState extends State<RegisterPage> {
         value: options.contains(current) ? current : options.first,
         decoration: InputDecoration(labelText: '${spec.column} — ${spec.label}'),
         items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: (v) { if (v != null) _setValue(spec.column, v); },
+        onChanged: (v) {
+          if (v != null) _setValue(spec.column, v);
+        },
       );
     }
     return TextFormField(
@@ -685,7 +697,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
-    for (final c in _controllers.values) { c.dispose(); }
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -695,84 +709,121 @@ class _RegisterPageState extends State<RegisterPage> {
       appBar: AppBar(
         title: const Text('Court OCR Scanner'),
         actions: [
-          IconButton(tooltip: 'Configure Google Cloud Vision OCR', onPressed: _configureCloudVision, icon: const Icon(Icons.document_scanner_outlined)),
-          IconButton(tooltip: 'Manage W assignees', onPressed: _manageAssignees, icon: const Icon(Icons.settings)),
+          IconButton(
+            tooltip: 'Configure Google Cloud Vision OCR',
+            onPressed: _configureCloudVision,
+            icon: const Icon(Icons.document_scanner_outlined),
+          ),
+          IconButton(
+            tooltip: 'Manage W assignees',
+            onPressed: _manageAssignees,
+            icon: const Icon(Icons.settings),
+          ),
         ],
       ),
       body: SafeArea(
-        child: Column(children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Row(children: [
-                Expanded(child: FilledButton.icon(
-                  onPressed: _busy ? null : () => _scan(ImageSource.camera),
-                  icon: const Icon(Icons.camera_alt), label: const Text('Scan document'),
-                )),
-                const SizedBox(width: 8),
-                Expanded(child: OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _scan(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library), label: const Text('Choose image'),
-                )),
-              ]),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: _busy ? null : _chooseWorkbook,
-                icon: const Icon(Icons.file_open),
-                label: Text(_workbookPath == null ? 'Open GH.xlsx workbook' : 'Workbook: $_workbookPath'),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: _busy ? null : () => _scan(ImageSource.camera),
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text('Scan document'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _busy ? null : () => _scan(ImageSource.gallery),
+                          icon: const Icon(Icons.photo_library),
+                          label: const Text('Choose image'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _chooseWorkbook,
+                    icon: const Icon(Icons.file_open),
+                    label: Text(_workbookPath == null ? 'Open GH.xlsx workbook' : 'Workbook: $_workbookPath'),
+                  ),
+                  const SizedBox(height: 8),
+                  if (_busy) const LinearProgressIndicator(),
+                  Text(_status, style: Theme.of(context).textTheme.bodySmall),
+                  if (_rawText.isNotEmpty)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Raw OCR text'),
+                            content: SizedBox(
+                              width: 500,
+                              child: SingleChildScrollView(
+                                child: SelectableText(_rawText),
+                              ),
+                            ),
+                            actions: [
+                              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+                            ],
+                          ),
+                        ),
+                        icon: const Icon(Icons.text_snippet_outlined),
+                        label: const Text('View scanned text'),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 8),
-              if (_busy) const LinearProgressIndicator(),
-              Text(_status, style: Theme.of(context).textTheme.bodySmall),
-              if (_rawText.isNotEmpty)
-                Align(alignment: Alignment.centerLeft, child: TextButton.icon(
-                  onPressed: () => showDialog<void>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Raw OCR text'),
-                      content: SizedBox(width: 500, child: SingleChildScrollView(child: SelectableText(_rawText))),
-                      actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close'))],
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+                children: [
+                  Text('Review and edit before saving', style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  const Text('This app writes to the original GH.xlsx Sheet1 columns and leaves all other columns and existing rows unchanged. Verify every OCR value before saving.'),
+                  const SizedBox(height: 12),
+                  ...fieldSpecs.map(
+                    (spec) => Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: _buildField(spec),
                     ),
                   ),
-                  icon: const Icon(Icons.text_snippet_outlined), label: const Text('View scanned text'),
-                )),
-            ]),
-          ),
-          const Divider(height: 1),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-              children: [
-                Text('Review and edit before saving', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 4),
-                const Text('This app writes to the original GH.xlsx Sheet1 columns and leaves all other columns and existing rows unchanged. Verify every OCR value before saving.'),
-                const SizedBox(height: 12),
-                ...fieldSpecs.map((spec) => Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: _buildField(spec),
-                )),
-                const SizedBox(height: 4),
-                FilledButton.icon(
-                  onPressed: _busy ? null : _saveExcel,
-                  icon: const Icon(Icons.save_alt),
-                  label: const Text('Save / Export Excel'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      for (final key in _values.keys) { _values[key] = ''; }
-                      _setDefaultDates();
-                      _rawText = '';
-                      _status = 'Form cleared. Ready for the next document.';
-                    });
-                  },
-                  icon: const Icon(Icons.restart_alt), label: const Text('Clear form for next document'),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _saveExcel,
+                    icon: const Icon(Icons.save_alt),
+                    label: const Text('Save / Export Excel'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        for (final key in _values.keys) {
+                          _values[key] = '';
+                        }
+                        _setDefaultDates();
+                        _rawText = '';
+                        _status = 'Form cleared. Ready for the next document.';
+                      });
+                    },
+                    icon: const Icon(Icons.restart_alt),
+                    label: const Text('Clear form for next document'),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ]),
+          ],
+        ),
       ),
     );
   }
