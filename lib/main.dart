@@ -500,9 +500,6 @@ class _RegisterPageState extends State<RegisterPage> {
       for (var r = 1; r < sheet.maxRows; r++) {
         final existingValue = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('C'), rowIndex: r)).value;
         String existingDate = existingValue?.toString().trim() ?? '';
-        if (existingValue is DateTimeCellValue) {
-          existingDate = fmtDate(existingValue.value);
-        }
         final parsedExisting = DateTime.tryParse(existingDate);
         if (parsedExisting != null) existingDate = fmtDate(parsedExisting);
         if (existingDate == scanDate) dailyCount++;
