@@ -103,6 +103,14 @@ String monthYear(String date) {
   return '${months[parsed.month - 1]}${parsed.year}';
 }
 
+String cellValueAsString(CellValue? cellValue) {
+  if (cellValue == null) return '';
+  if (cellValue is DateTimeCellValue) return fmtDate(cellValue.date);
+  if (cellValue is TextCellValue) return cellValue.value.trim();
+  if (cellValue is NumericCellValue) return cellValue.value.toString();
+  return cellValue.toString().trim();
+}
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
   @override
@@ -300,9 +308,13 @@ class _RegisterPageState extends State<RegisterPage> {
       if (sheet == null) return '1';
       var highest = 0;
       for (var r = 1; r < sheet.maxRows; r++) {
-        final existingCourt = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('I'), rowIndex: r)).value?.toString().trim();
-        if (existingCourt?.toLowerCase() != court.toLowerCase()) continue;
-        final raw = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('B'), rowIndex: r)).value?.toString().trim() ?? '';
+        final existingCourt = cellValueAsString(
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('I'), rowIndex: r)).value,
+        ).trim();
+        if (existingCourt.toLowerCase() != court.toLowerCase()) continue;
+        final raw = cellValueAsString(
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('B'), rowIndex: r)).value,
+        ).trim();
         final number = int.tryParse(raw);
         if (number != null && number > highest) highest = number;
       }
@@ -481,9 +493,11 @@ class _RegisterPageState extends State<RegisterPage> {
         'W': 'MARK TO', 'AE': 'SUMMON FOR', 'AF': 'AREA OF TAMILI', 'AM': 'PURPOSE OF SUMMON',
       };
       for (final entry in expectedHeaders.entries) {
-        final actual = sheet.cell(CellIndex.indexByColumnRow(
-          columnIndex: colIndex(entry.key), rowIndex: 0,
-        )).value?.toString().trim() ?? '';
+        final actual = cellValueAsString(
+          sheet.cell(CellIndex.indexByColumnRow(
+            columnIndex: colIndex(entry.key), rowIndex: 0,
+          )).value,
+        ).trim();
         if (actual.toUpperCase() != entry.value) {
           throw Exception('Sheet1 column ${entry.key} must be "${entry.value}"; found "$actual". Please select the original GH.xlsx workbook.');
         }
@@ -498,11 +512,14 @@ class _RegisterPageState extends State<RegisterPage> {
       // Serial number restarts each scan date; registration is counted per court.
       var dailyCount = 0;
       for (var r = 1; r < sheet.maxRows; r++) {
-        final existingValue = sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('C'), rowIndex: r)).value;
-        String existingDate = existingValue?.toString().trim() ?? '';
-        final parsedExisting = DateTime.tryParse(existingDate);
-        if (parsedExisting != null) existingDate = fmtDate(parsedExisting);
-        if (existingDate == scanDate) dailyCount++;
+        final existingDateText = cellValueAsString(
+          sheet.cell(CellIndex.indexByColumnRow(columnIndex: colIndex('C'), rowIndex: r)).value,
+        ).trim();
+        final parsedExisting = DateTime.tryParse(existingDateText.replaceAll('/', '-'));
+        if (parsedExisting != null) {
+          final existingDate = fmtDate(parsedExisting);
+          if (existingDate == scanDate) dailyCount++;
+        }
       }
       if ((_values['A'] ?? '').trim().isEmpty) _values['A'] = '${dailyCount + 1}';
       final court = (_values['I'] ?? '').trim();
